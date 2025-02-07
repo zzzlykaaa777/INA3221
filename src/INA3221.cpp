@@ -395,8 +395,8 @@ void INA3221::setCurrentSumDisable(ina3221_ch_t channel) {
     _masken_reg = masken_reg;
 }
 
-int16_t INA3221::getShuntVoltage(ina3221_ch_t channel) {
-    int16_t res;
+int32_t INA3221::getShuntVoltage(ina3221_ch_t channel) {
+    int32_t res;
     ina3221_reg_t reg = INA3221_REG_CONF;
     uint16_t val_raw = 0;
 
@@ -414,9 +414,15 @@ int16_t INA3221::getShuntVoltage(ina3221_ch_t channel) {
 
     _read(reg, &val_raw);
 
+    // val_raw is a uint16_t but contains a 12 bit signed value, padded to the right with three zero bits.
+    // First we need to convert to signed int, then remove the 3 LSB padding
+    // This has to go to int16_t, we can't go directly to int32 otherwise we'd end up padding with zero's to the left on negative values
+    // which would incorrectly make it positive.
+    // By going unit16->int16->int32 we take advantage of sign extension when going from 16 to 32 bits.
     // instead of bit-shifting, (which would break the signed integer signing,) divide by 8 to remove the (reserved) last 3 least-significant bits
+    // Then convert to int32 as multiplying by 40 can overflow the int16
     // 1 LSB = 40uV
-    res = ((int16_t)(val_raw) / 8) * 40;
+    res = (int32_t)((int16_t)(val_raw) / 8) * 40;
 
     return res;
 }
@@ -447,13 +453,13 @@ bool INA3221::getCritAlertFlag(ina3221_ch_t channel) {
     }
 }
 
-int16_t INA3221::estimateOffsetVoltage(ina3221_ch_t channel, uint16_t busV) {
+int32_t INA3221::estimateOffsetVoltage(ina3221_ch_t channel, uint16_t busV) {
     float bias_in     = 10.0;   // Input bias current at IN– in uA
     float r_in        = 0.670;  // Input resistance at IN– in MOhm
     uint16_t adc_step = 40;     // smallest shunt ADC step in uV
     float shunt_res   = _shuntRes[channel] / 1000.0;  // convert to Ohm
     float filter_res  = _filterRes[channel];
-    int16_t offset    = 0.0;
+    int32_t offset    = 0.0;
     float reminder;
 
     offset = (shunt_res + filter_res) * (busV / r_in + bias_in) -
@@ -471,7 +477,7 @@ int16_t INA3221::estimateOffsetVoltage(ina3221_ch_t channel, uint16_t busV) {
 }
 
 float INA3221::getCurrent(ina3221_ch_t channel) {
-    int16_t shunt_uV = 0;
+    int32_t shunt_uV = 0;
     float current_mA  = 0.0;
 
     shunt_uV  = getShuntVoltage(channel);
@@ -480,10 +486,10 @@ float INA3221::getCurrent(ina3221_ch_t channel) {
 }
 
 float INA3221::getCurrentCompensated(ina3221_ch_t channel) {
-    int16_t shunt_uV  = 0;
+    int32_t shunt_uV  = 0;
     int16_t bus_V     = 0;
     float current_mA   = 0.0;
-    int16_t offset_uV = 0;
+    int32_t offset_uV = 0;
 
     shunt_uV  = getShuntVoltage(channel);
     bus_V     = getVoltage(channel);

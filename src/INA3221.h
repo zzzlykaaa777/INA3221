@@ -288,7 +288,7 @@ class INA3221 {
     void setCurrentSumDisable(ina3221_ch_t channel);
 
     // Gets shunt voltage in uV.
-    int16_t getShuntVoltage(ina3221_ch_t channel);
+    int32_t getShuntVoltage(ina3221_ch_t channel);
 
     // Gets warning alert flag.
     bool getWarnAlertFlag(ina3221_ch_t channel);
@@ -297,7 +297,7 @@ class INA3221 {
     bool getCritAlertFlag(ina3221_ch_t channel);
 
     // Estimates offset voltage added by the series filter resitors
-    int16_t estimateOffsetVoltage(ina3221_ch_t channel, uint16_t busVoltage);
+    int32_t estimateOffsetVoltage(ina3221_ch_t channel, uint16_t busVoltage);
 
     // Gets current in mA.
     float getCurrent(ina3221_ch_t channel);
